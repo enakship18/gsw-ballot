@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026–27 GSW Ballot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --navy: #232D4B;
+    --orange: #E57200;
+    --ink: #1B1C22;
+    --muted: #5B5E66;
+    --rule: #DCDFE3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #FFFFFF; color: var(--ink); width: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }
+  .serif { font-family: 'Libre Caslon Text', Georgia, serif; }
+  .band { width: 100%; background: var(--navy); position: relative; }
+  .band-inner { max-width: 1100px; margin: 0 auto; padding: 44px 24px; }
+  .stamp {
+    display: inline-block; background: var(--orange); color: #fff;
+    font-family: 'Libre Caslon Text', Georgia, serif; font-weight: 700; font-size: 12px;
+    letter-spacing: 0.14em; padding: 4px 12px; border-radius: 2px; margin-bottom: 14px;
+  }
+  h1 { color: #fff; font-size: 30px; margin: 0 0 6px; line-height: 1.25; font-weight: 700; }
+  .doc-sub { color: rgba(255,255,255,0.75); font-size: 14px; margin: 0; }
+  main.content { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  .lede { font-size: 15px; margin: 0 0 26px; max-width: 72ch; text-align: justify; }
+  .rules { margin-bottom: 26px; }
+  .rules details { border-bottom: 1px solid var(--rule); padding: 13px 0; }
+  .rules summary { font-size: 15.5px; cursor: pointer; }
+  .rules summary::marker { color: var(--muted); }
+  .rules p { color: var(--muted); font-size: 13.5px; margin: 10px 0 0; max-width: 68ch; text-align: justify; }
+  .divider { border: none; border-top: 1px solid var(--rule); margin: 0 0 26px; }
+  .name-field { background: #F4F6F9; border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: 6px; padding: 20px; margin-bottom: 22px; }
+  .name-field label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .name-field input {
+    width: 100%; max-width: 380px; padding: 10px 12px; border: 1px solid var(--rule);
+    border-radius: 4px; font-family: inherit; font-size: 14.5px; color: var(--ink);
+  }
+  .name-field input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(35,45,75,0.15); }
+  .name-note { font-size: 12.5px; color: var(--orange); font-weight: 600; margin: 10px 0 0; }
+  .list-header { display: none; }
+  @media (min-width: 560px) {
+    .list-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 0 0 8px; border-bottom: 2px solid var(--navy); margin-bottom: 2px;
+    }
+  }
+  .list-header .header-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .list-header .header-ranks { display: flex; gap: 6px; }
+  .list-header .header-ranks span { width: 26px; text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); }
+  .candidates-list { margin-bottom: 30px; }
+  .candidate-row {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px 16px; padding: 16px 4px; border-bottom: 1px solid var(--rule); transition: background-color 150ms;
+  }
+  .candidate-row.ranked { background: #FFF8F2; }
+  .cand-info { flex: 1 1 260px; min-width: 200px; }
+  .cand-name { display: block; font-weight: 700; font-size: 15.5px; color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--muted); padding-bottom: 2px; }
+  .cand-name:hover { border-bottom-color: var(--navy); }
+  .cand-meta { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .bubble-row { display: flex; gap: 6px; flex-shrink: 0; }
+  .bubble {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid var(--rule); background: #fff; color: var(--muted);
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+  }
+  .bubble:hover { border-color: var(--navy); color: var(--navy); }
+  .bubble.filled { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .bubble:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .cast-row { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
+  .cast-hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .cast-btn { background: var(--orange); color: #fff; border: none; font-size: 15px; font-family: inherit; font-weight: 600; padding: 13px 26px; border-radius: 4px; cursor: pointer; }
+  .cast-btn:disabled { background: var(--rule); color: var(--muted); cursor: not-allowed; }
+  .cast-error { color: #B3261E; font-size: 13px; max-width: 320px; text-align: right; }
+  .confirm { padding: 30px 0; }
+  .confirm .mark { font-size: 20px; margin: 0 0 8px; color: var(--navy); }
+  .confirm p { color: var(--muted); font-size: 14px; margin: 0 0 18px; text-align: justify; }
+  .edit-btn { background: none; border: 1px solid var(--navy); color: var(--navy); font-family: inherit; font-size: 13.5px; padding: 9px 18px; border-radius: 4px; cursor: pointer; }
+  .footer-band { background: var(--navy); }
+  .footer-band .band-inner { padding: 22px 24px; }
+  .footer-band p { color: rgba(255,255,255,0.65); font-size: 12px; margin: 0; }
+  @media (max-width: 600px) {
+    .band-inner { padding: 30px 18px; }
+    main.content { padding: 28px 18px 60px; }
+  }
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="band-inner">
+    <span class="stamp">SAMPLE</span>
+    <h1 class="serif">2026–27 Graduate Student Workshop</h1>
+    <p class="doc-sub">UVA Department of Economics — Speaker Ballot</p>
+  </div>
+</header>
+
+<main class="content">
+  <p class="lede">Fill in your name, then rank up to five nominees below in order of preference. Each entry shows the affiliation, field, and website their nominator submitted.</p>
+
+  <section class="rules">
+    <details>
+      <summary class="serif">What is ranked-choice voting?</summary>
+      <p>RCV is a voting system that identifies the candidate with the most widespread support. In our modified RCV, even if your 1st choice doesn't win, your other choices (2nd, 3rd, 4th, or 5th) still count in determining the outcome.</p>
+    </details>
+    <details>
+      <summary class="serif">How are votes counted in modified RCV?</summary>
+      <p>If a candidate receives more than 50% of 1st-choice votes, they win. If no candidate meets that threshold, rounds of elimination begin. In each round, the candidate with the fewest votes is eliminated. If your highest-ranked candidate is eliminated, your vote moves to the next highest-ranked candidate. This continues until a candidate wins, or Round 5 is reached — at which point the candidate with the most votes in that round wins.</p>
+    </details>
+    <details>
+      <summary class="serif">Can I vote for only one candidate? Will my ballot still count?</summary>
+      <p>Yes, your ballot will count even if you vote for fewer than 5 candidates. Ranking additional candidates will not hurt your top choices. Your vote moves to your lower-ranked candidates only if your higher-ranked candidates are eliminated.</p>
+    </details>
+    <details>
+      <summary class="serif">What if every candidate I ranked gets eliminated?</summary>
+      <p>Your ballot becomes "exhausted" — it drops out of the count for the rest of the tallying. It doesn't transfer to anyone else and doesn't count against anyone either; it simply stops influencing the outcome from that round on.</p>
+    </details>
+    <details>
+      <summary class="serif">Can I change my ballot after submitting?</summary>
+      <p>Yes. Enter the same name and this form will load your previous ranking so you can adjust it. Submitting again replaces your earlier ballot — only your latest one counts.</p>
+    </details>
+  </section>
+
+  <hr class="divider">
+
+  <div class="name-field" id="nameField">
+    <label for="voterName">Your name</label>
+    <input id="voterName" type="text" placeholder="e.g. Jane Doe" autocomplete="name">
+    <p class="name-note" id="nameNote" style="display:none;"></p>
+  </div>
+
+  <div class="list-header" id="listHeader">
+    <span class="header-name">Nominee</span>
+    <div class="header-ranks"><span>1st</span><span>2nd</span><span>3rd</span><span>4th</span><span>5th</span></div>
+  </div>
+
+  <div class="candidates-list" id="candidatesList">
+    <div class="candidate-row" data-name="Daron Acemoglu"><div class="cand-info"><a class="cand-name" href="https://economics.mit.edu/people/faculty/daron-acemoglu" target="_blank" rel="noopener">Daron Acemoglu</a><p class="cand-meta">MIT &middot; Macroeconomics, Political Economy, Labor Economics, Development Economics, Economic Theory</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Ufuk Akcigit"><div class="cand-info"><a class="cand-name" href="https://www.ufukakcigit.com/" target="_blank" rel="noopener">Ufuk Akcigit</a><p class="cand-meta">University of Chicago &middot; Macro, Growth</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Treb Allen"><div class="cand-info"><a class="cand-name" href="https://sites.google.com/site/treballen/" target="_blank" rel="noopener">Treb Allen</a><p class="cand-meta">Dartmouth College &middot; Trade, Urban Economics, Economic Development, Economic History</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Susan Athey"><div class="cand-info"><a class="cand-name" href="https://sites.google.com/stanford.edu/susan-athey" target="_blank" rel="noopener">Susan Athey</a><p class="cand-meta">Stanford Graduate School of Business &middot; Industrial Organization, Econometrics, Economics of Technology</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Leah Boustan"><div class="cand-info"><a class="cand-name" href="https://campuspress.yale.edu/leahboustan/" target="_blank" rel="noopener">Leah Boustan</a><p class="cand-meta">Yale University &middot; Labor Economics, Economic History, Urban Economics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Raj Chetty"><div class="cand-info"><a class="cand-name" href="https://rajchetty.com/" target="_blank" rel="noopener">Raj Chetty</a><p class="cand-meta">Harvard University &middot; Applied Micro</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Dave Donaldson"><div class="cand-info"><a class="cand-name" href="https://economics.mit.edu/people/faculty/dave-donaldson" target="_blank" rel="noopener">Dave Donaldson</a><p class="cand-meta">MIT &middot; Development Economics, Environmental Economics, International Economics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Rachel Glennerster"><div class="cand-info"><a class="cand-name" href="https://rglennerster.ssd.uchicago.edu/" target="_blank" rel="noopener">Rachel Glennerster</a><p class="cand-meta">Center for Global Development (CGDev) and University of Chicago &middot; Democracy, Health, Education, Gender and Market Innovation</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Avi Goldfarb"><div class="cand-info"><a class="cand-name" href="https://www.avigoldfarb.com/" target="_blank" rel="noopener">Avi Goldfarb</a><p class="cand-meta">University of Toronto &middot; IO, Digital Economics, Marketing</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Claudia Goldin"><div class="cand-info"><a class="cand-name" href="https://sites.harvard.edu/claudia-goldin/" target="_blank" rel="noopener">Claudia Goldin</a><p class="cand-meta">Harvard &middot; Labor and Gender</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Johannes Haushofer"><div class="cand-info"><a class="cand-name" href="https://johanneshaushofer.com/" target="_blank" rel="noopener">Johannes Haushofer</a><p class="cand-meta">Cornell University &middot; Public Policy, Applied Micro, Development, Psychology</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Chang-Tai Hsieh"><div class="cand-info"><a class="cand-name" href="https://www.chicagobooth.edu/faculty/directory/h/chang-tai-hsieh" target="_blank" rel="noopener">Chang-Tai Hsieh</a><p class="cand-meta">University of Chicago Booth School of Business &middot; Macro/Development</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Peter Hull"><div class="cand-info"><a class="cand-name" href="https://about.peterhull.net/" target="_blank" rel="noopener">Peter Hull</a><p class="cand-meta">Brown University &middot; Econometrics/applied micro</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Greg Kaplan"><div class="cand-info"><a class="cand-name" href="https://gregkaplan.me/" target="_blank" rel="noopener">Greg Kaplan</a><p class="cand-meta">Chicago &middot; Macro, Labor, Applied Micro</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Robin S. Lee"><div class="cand-info"><a class="cand-name" href="https://robinlee.sites.fas.harvard.edu/" target="_blank" rel="noopener">Robin S. Lee</a><p class="cand-meta">Harvard University &middot; IO</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Matteo Maggiori"><div class="cand-info"><a class="cand-name" href="https://www.matteomaggiori.com/" target="_blank" rel="noopener">Matteo Maggiori</a><p class="cand-meta">Stanford University &middot; International Economics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Emi Nakamura"><div class="cand-info"><a class="cand-name" href="https://eminakamura.com" target="_blank" rel="noopener">Emi Nakamura</a><p class="cand-meta">University of California, Berkeley &middot; Macroeconomics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Nathan Nunn"><div class="cand-info"><a class="cand-name" href="https://nathannunn.arts.ubc.ca" target="_blank" rel="noopener">Nathan Nunn</a><p class="cand-meta">Vancouver School of Economics, University of British Columbia &middot; Political Economy, Economic History, Economic Development, International Trade</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Michael Peters"><div class="cand-info"><a class="cand-name" href="https://mipeters.weebly.com/" target="_blank" rel="noopener">Michael Peters</a><p class="cand-meta">Yale University &middot; Macroeconomics, Economic Growth and Development, Economic Geography, International Trade</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Stephen Redding"><div class="cand-info"><a class="cand-name" href="https://stephenredding.github.io/" target="_blank" rel="noopener">Stephen Redding</a><p class="cand-meta">Stanford University &middot; International Trade, Economic Geography, Urban Economics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Emmanuel Saez"><div class="cand-info"><a class="cand-name" href="https://eml.berkeley.edu/~saez/" target="_blank" rel="noopener">Emmanuel Saez</a><p class="cand-meta">Berkeley &middot; Public</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Stefanie Stantcheva"><div class="cand-info"><a class="cand-name" href="https://www.stefanie-stantcheva.com/" target="_blank" rel="noopener">Stefanie Stantcheva</a><p class="cand-meta">Harvard University &middot; Public Economics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Chad Syverson"><div class="cand-info"><a class="cand-name" href="https://faculty.chicagobooth.edu/chad-syverson" target="_blank" rel="noopener">Chad Syverson</a><p class="cand-meta">University of Chicago (Chicago Booth) &middot; Industrial Organization, Productivity, and Firm Dynamics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Elie Tamer"><div class="cand-info"><a class="cand-name" href="https://tamer.scholars.harvard.edu/biocv" target="_blank" rel="noopener">Elie Tamer</a><p class="cand-meta">Harvard University &middot; Metrics, Empirical IO</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Chris Timmins"><div class="cand-info"><a class="cand-name" href="https://www.christophertimmins.com/" target="_blank" rel="noopener">Chris Timmins</a><p class="cand-meta">Wisconsin &middot; Environmental/Urban</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Gianluca Violante"><div class="cand-info"><a class="cand-name" href="https://violante.economics.princeton.edu/" target="_blank" rel="noopener">Gianluca Violante</a><p class="cand-meta">Princeton University &middot; Macroeconomics</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Ivan Werning"><div class="cand-info"><a class="cand-name" href="https://economics.mit.edu/people/faculty/ivan-werning" target="_blank" rel="noopener">Ivan Werning</a><p class="cand-meta">MIT &middot; Macro, Public, International</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+    <div class="candidate-row" data-name="Gabriel Zucman"><div class="cand-info"><a class="cand-name" href="https://gabriel-zucman.eu/bio/" target="_blank" rel="noopener">Gabriel Zucman</a><p class="cand-meta">Berkeley/PSE &middot; Public</p></div><div class="bubble-row"><button type="button" class="bubble" data-rank="1">1</button><button type="button" class="bubble" data-rank="2">2</button><button type="button" class="bubble" data-rank="3">3</button><button type="button" class="bubble" data-rank="4">4</button><button type="button" class="bubble" data-rank="5">5</button></div></div>
+  </div>
+
+  <div class="cast-row" id="castRow">
+    <p class="cast-hint" id="castHint"></p>
+    <button class="cast-btn" id="castBtn" disabled>Cast Ballot</button>
+  </div>
+
+  <div id="confirmView" class="confirm" style="display:none;">
+    <p class="mark serif" id="confirmMark">Thanks — your ballot has been recorded.</p>
+    <p id="ballotSummary"></p>
+    <button class="edit-btn" id="editBtn">Edit My Ballot</button>
+  </div>
+</main>
+
+<footer class="band footer-band">
+  <div class="band-inner">
+    <p>An internal tool for Graduate Student Workshop planning — not an official University ballot.</p>
+  </div>
+</footer>
+
+<script>
+// ============================================================
+// REPLACE THIS with the firebaseConfig object from your own
+// Firebase project (Project settings -> Your apps -> web app).
+// This value is not secret -- Firebase's web config is meant
+// to be public; the Firestore security rules do the actual
+// protecting.
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAQbHT4GTV6bJ4D_FgW3R1To9SJlp-BtyU",
+  authDomain: "gsw-27-ballot.firebaseapp.com",
+  projectId: "gsw-27-ballot",
+  storageBucket: "gsw-27-ballot.firebasestorage.app",
+  messagingSenderId: "316067618836",
+  appId: "1:316067618836:web:685e9007ca7e59f966c701",
+  measurementId: "G-BE1WN3KW4F"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ballotsCollection = db.collection("ballots");
+
+let assignment = {};
+const cardsByName = {};
+
+const grid = document.getElementById("candidatesList");
+const voterNameInput = document.getElementById("voterName");
+const nameNote = document.getElementById("nameNote");
+const castBtn = document.getElementById("castBtn");
+const castHint = document.getElementById("castHint");
+const castRow = document.getElementById("castRow");
+const nameField = document.getElementById("nameField");
+const listHeader = document.getElementById("listHeader");
+const confirmView = document.getElementById("confirmView");
+
+function slugify(name) {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function candidateAtRank(r) {
+  let found = null;
+  Object.keys(assignment).forEach(function (c) {
+    if (assignment[c] === r) found = c;
+  });
+  return found;
+}
+
+function updateBubbleVisual(name) {
+  const card = cardsByName[name];
+  if (!card) return;
+  const rank = assignment[name];
+  card.querySelectorAll(".bubble").forEach(function (btn) {
+    const r = parseInt(btn.getAttribute("data-rank"), 10);
+    btn.classList.toggle("filled", r === rank);
+  });
+  card.classList.toggle("ranked", !!rank);
+}
+
+function setRank(name, rank) {
+  if (rank) {
+    const occupant = candidateAtRank(rank);
+    if (occupant && occupant !== name) {
+      delete assignment[occupant];
+      updateBubbleVisual(occupant);
+    }
+    assignment[name] = rank;
+  } else {
+    delete assignment[name];
+  }
+  updateBubbleVisual(name);
+  updateCastState();
+}
+
+function getOrderedBallot() {
+  const entries = [];
+  Object.keys(assignment).forEach(function (name) {
+    entries.push([name, assignment[name]]);
+  });
+  entries.sort(function (a, b) { return a[1] - b[1]; });
+  return entries.map(function (e) { return e[0]; });
+}
+
+function updateCastState() {
+  const nameOk = voterNameInput.value.trim().length > 0;
+  const rankOk = Object.keys(assignment).length > 0;
+  castBtn.disabled = !(nameOk && rankOk);
+  if (nameOk && rankOk) {
+    castHint.textContent = "";
+  } else if (!nameOk && !rankOk) {
+    castHint.textContent = "Enter your name above and rank at least one nominee to continue.";
+  } else if (!nameOk) {
+    castHint.textContent = "Enter your name above to continue.";
+  } else {
+    castHint.textContent = "Rank at least one nominee to continue.";
+  }
+}
+
+function showNameNote(text) { nameNote.textContent = text; nameNote.style.display = "block"; }
+function hideNameNote() { nameNote.style.display = "none"; }
+
+function initBubbles() {
+  document.querySelectorAll(".candidate-row").forEach(function (row) {
+    const name = row.getAttribute("data-name");
+    cardsByName[name] = row;
+    row.querySelectorAll(".bubble").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const r = parseInt(btn.getAttribute("data-rank"), 10);
+        setRank(name, assignment[name] === r ? null : r);
+      });
+    });
+  });
+}
+
+function showConfirmation(voterName, ranking) {
+  nameField.style.display = "none";
+  listHeader.style.display = "none";
+  grid.style.display = "none";
+  castRow.style.display = "none";
+  document.getElementById("ballotSummary").textContent =
+    ranking.map(function (c, i) { return (i + 1) + ". " + c; }).join("   ");
+  confirmView.style.display = "block";
+}
+
+function showForm() {
+  nameField.style.display = "block";
+  listHeader.style.display = "";
+  grid.style.display = "";
+  castRow.style.display = "flex";
+  confirmView.style.display = "none";
+  castBtn.disabled = false;
+  castBtn.textContent = "Cast Ballot";
+}
+
+function showCastError(message) {
+  let el = document.getElementById("castError");
+  if (!el) {
+    el = document.createElement("p");
+    el.id = "castError";
+    el.className = "cast-error";
+    castRow.appendChild(el);
+  }
+  el.textContent = message;
+}
+
+function clearCastError() {
+  const el = document.getElementById("castError");
+  if (el) el.remove();
+}
+
+voterNameInput.addEventListener("input", updateCastState);
+
+voterNameInput.addEventListener("blur", function () {
+  const name = voterNameInput.value.trim();
+  if (!name) { hideNameNote(); return; }
+  const slug = slugify(name);
+  ballotsCollection.doc(slug).get().then(function (docSnap) {
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      assignment = {};
+      Object.keys(cardsByName).forEach(updateBubbleVisual);
+      (data.ranking || []).forEach(function (n, i) {
+        if (cardsByName[n]) assignment[n] = i + 1;
+      });
+      Object.keys(cardsByName).forEach(updateBubbleVisual);
+      showNameNote("Loaded your previous ballot for this name — adjust and cast again to update it.");
+    } else {
+      hideNameNote();
+    }
+    updateCastState();
+  }).catch(function () {
+    hideNameNote();
+    updateCastState();
+  });
+});
+
+castBtn.addEventListener("click", function () {
+  const name = voterNameInput.value.trim();
+  const ordered = getOrderedBallot();
+  if (!name || ordered.length === 0) return;
+  const slug = slugify(name);
+
+  clearCastError();
+  castBtn.disabled = true;
+  castBtn.textContent = "Casting\u2026";
+
+  ballotsCollection.doc(slug).set({ voter: name, ranking: ordered })
+    .then(function () {
+      showConfirmation(name, ordered);
+    })
+    .catch(function (err) {
+      castBtn.disabled = false;
+      castBtn.textContent = "Cast Ballot";
+      showCastError("Couldn't save your ballot (" + (err && err.code ? err.code : "error") + ") \u2014 check your connection and try again.");
+    });
+});
+
+document.getElementById("editBtn").addEventListener("click", showForm);
+
+initBubbles();
+updateCastState();
+</script>
+</body>
+</html>
