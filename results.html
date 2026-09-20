@@ -31,6 +31,7 @@
   .who { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px; color: var(--muted); }
   .who button { background: none; border: none; color: var(--navy); text-decoration: underline; font-family: inherit; font-size: 13px; cursor: pointer; padding: 0; }
   .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .toolbar-buttons { display: flex; gap: 10px; }
   .refresh-btn { background: var(--navy); color: #fff; border: none; font-family: inherit; font-size: 13.5px; padding: 9px 18px; border-radius: 4px; cursor: pointer; }
   .voter-count { font-size: 13px; color: var(--muted); }
   .winner-line { font-size: 15px; margin: 0 0 18px; }
@@ -48,6 +49,9 @@
   .log-table td.superseded { color: var(--rule); }
   .log-table .flag-yes { color: var(--orange); font-weight: 700; }
   .log-table .flag-no { color: var(--muted); }
+  .delete-btn { background: none; border: 1px solid var(--rule); color: #B3261E; font-family: inherit; font-size: 12px; padding: 4px 9px; border-radius: 4px; cursor: pointer; }
+  .delete-btn:hover { border-color: #B3261E; }
+  .delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -75,7 +79,10 @@
       <button id="signoutBtn">Sign out</button>
     </div>
     <div class="toolbar">
-      <button class="refresh-btn" id="refreshBtn">Refresh Results</button>
+      <div class="toolbar-buttons">
+        <button class="refresh-btn" id="refreshBtn">Refresh Results</button>
+        <button class="refresh-btn" id="downloadBtn">Download CSV</button>
+      </div>
       <span class="voter-count" id="voterCount"></span>
     </div>
     <div id="resultsSection"><p class="empty">Loading…</p></div>
@@ -297,28 +304,57 @@ function renderLog(submissions) {
   });
   let rows = "";
   sorted.forEach(function (s) {
+    const r = s.ranking || [];
+    let rankCells = "";
+    for (let i = 0; i < 5; i++) {
+      rankCells += '<td class="left">' + (r[i] || "—") + "</td>";
+    }
     rows += "<tr" + (s.isLatest ? "" : ' class="superseded"') + ">" +
       '<td class="left">' + formatTimestamp(s.timestamp) + "</td>" +
       '<td class="left">' + (s.voter || "—") + "</td>" +
       '<td class="left">' + (s.computingId || "—") + "</td>" +
+      rankCells +
       '<td class="left">' + (s.ballotVersion || "—") + "</td>" +
       '<td class="left">' + (s.submissionId || "—") + "</td>" +
       "<td>" + (s.isLatest ? '<span class="flag-yes">Yes</span>' : '<span class="flag-no">No</span>') + "</td>" +
       "<td>" + (s.includedInCount ? '<span class="flag-yes">Yes</span>' : '<span class="flag-no">No</span>') + "</td>" +
+      '<td><button type="button" class="delete-btn" data-id="' + s.submissionId + '" data-voter="' + (s.voter || "").replace(/"/g, "&quot;") + '">Delete</button></td>' +
       "</tr>";
   });
   logTableWrap.innerHTML =
     '<table class="log-table"><thead><tr>' +
     '<th class="left">Timestamp</th><th class="left">Voter</th><th class="left">Computing ID</th>' +
-    '<th class="left">Ballot version</th><th class="left">Submission ID</th><th>Latest?</th><th>Counted?</th>' +
+    '<th class="left">1st</th><th class="left">2nd</th><th class="left">3rd</th><th class="left">4th</th><th class="left">5th</th>' +
+    '<th class="left">Ballot version</th><th class="left">Submission ID</th><th>Latest?</th><th>Counted?</th><th></th>' +
     "</tr></thead><tbody>" + rows + "</tbody></table>";
 }
+
+logTableWrap.addEventListener("click", function (e) {
+  const btn = e.target.closest(".delete-btn");
+  if (!btn) return;
+  const id = btn.getAttribute("data-id");
+  const voter = btn.getAttribute("data-voter");
+  const sure = window.confirm('Permanently delete the submission from "' + voter + '" (ID: ' + id + ')?\n\nThis cannot be undone.');
+  if (!sure) return;
+  btn.disabled = true;
+  btn.textContent = "Deleting\u2026";
+  db.collection("ballot_submissions").doc(id).delete().then(function () {
+    loadResults();
+  }).catch(function (err) {
+    btn.disabled = false;
+    btn.textContent = "Delete";
+    window.alert("Couldn't delete (" + (err && err.code ? err.code : "error") + ").");
+  });
+});
+
+let currentSubmissions = [];
 
 function loadResults() {
   resultsSection.innerHTML = '<p class="empty">Loading…</p>';
   fetchSubmissions().then(function (items) {
     return reconcileLatest(items);
   }).then(function (all) {
+    currentSubmissions = all;
     const counted = all.filter(function (s) { return s.includedInCount; }).map(function (s) { return s.ranking; });
     const tally = tallyRCV(counted, CANDIDATE_NAMES);
     renderResults(tally, CANDIDATE_NAMES);
@@ -338,6 +374,46 @@ function loadResults() {
 }
 
 document.getElementById("refreshBtn").addEventListener("click", loadResults);
+
+function csvField(val) {
+  const s = (val === undefined || val === null) ? "" : String(val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildCSV(submissions) {
+  const headers = ["Timestamp", "Voter", "Computing ID", "1st", "2nd", "3rd", "4th", "5th", "Ballot Version", "Submission ID", "Latest", "Counted"];
+  const sorted = submissions.slice().sort(function (a, b) {
+    const ta = a.timestamp && a.timestamp.toMillis ? a.timestamp.toMillis() : 0;
+    const tb = b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : 0;
+    return tb - ta;
+  });
+  const lines = [headers.map(csvField).join(",")];
+  sorted.forEach(function (s) {
+    const r = s.ranking || [];
+    const row = [
+      formatTimestamp(s.timestamp), s.voter || "", s.computingId || "",
+      r[0] || "", r[1] || "", r[2] || "", r[3] || "", r[4] || "",
+      s.ballotVersion || "", s.submissionId || "",
+      s.isLatest ? "Yes" : "No", s.includedInCount ? "Yes" : "No"
+    ];
+    lines.push(row.map(csvField).join(","));
+  });
+  return lines.join("\r\n");
+}
+
+document.getElementById("downloadBtn").addEventListener("click", function () {
+  const csv = buildCSV(currentSubmissions);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gsw-ballot-submissions-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
 </script>
 </body>
 </html>
