@@ -156,10 +156,44 @@ auth.onAuthStateChanged(function (user) {
 
 function fetchSubmissions() {
   return db.collection("ballot_submissions").get().then(function (snap) {
-    const all = [];
-    snap.forEach(function (docSnap) { all.push(docSnap.data()); });
-    return all;
+    const items = [];
+    snap.forEach(function (docSnap) { items.push({ ref: docSnap.ref, data: docSnap.data() }); });
+    return items;
   });
+}
+
+function reconcileLatest(items) {
+  const byComputingId = {};
+  items.forEach(function (item) {
+    const cid = item.data.computingId;
+    if (!byComputingId[cid]) byComputingId[cid] = [];
+    byComputingId[cid].push(item);
+  });
+
+  const batch = db.batch();
+  let needsCommit = false;
+
+  Object.keys(byComputingId).forEach(function (cid) {
+    const group = byComputingId[cid];
+    let latest = group[0];
+    group.forEach(function (item) {
+      const t = item.data.timestamp && item.data.timestamp.toMillis ? item.data.timestamp.toMillis() : 0;
+      const bestT = latest.data.timestamp && latest.data.timestamp.toMillis ? latest.data.timestamp.toMillis() : 0;
+      if (t > bestT) latest = item;
+    });
+    group.forEach(function (item) {
+      const shouldBeLatest = item === latest;
+      if (item.data.isLatest !== shouldBeLatest || item.data.includedInCount !== shouldBeLatest) {
+        batch.update(item.ref, { isLatest: shouldBeLatest, includedInCount: shouldBeLatest });
+        needsCommit = true;
+        item.data.isLatest = shouldBeLatest;
+        item.data.includedInCount = shouldBeLatest;
+      }
+    });
+  });
+
+  const finished = needsCommit ? batch.commit() : Promise.resolve();
+  return finished.then(function () { return items.map(function (item) { return item.data; }); });
 }
 
 function tallyRCV(ballots, candidates) {
@@ -282,7 +316,9 @@ function renderLog(submissions) {
 
 function loadResults() {
   resultsSection.innerHTML = '<p class="empty">Loading…</p>';
-  fetchSubmissions().then(function (all) {
+  fetchSubmissions().then(function (items) {
+    return reconcileLatest(items);
+  }).then(function (all) {
     const counted = all.filter(function (s) { return s.includedInCount; }).map(function (s) { return s.ranking; });
     const tally = tallyRCV(counted, CANDIDATE_NAMES);
     renderResults(tally, CANDIDATE_NAMES);
@@ -293,7 +329,7 @@ function loadResults() {
     if (code === "permission-denied") {
       resultsSection.innerHTML = "";
       auth.signOut();
-      deniedMsg.textContent = "That Google account isn't on the organizer list. Sign in with the account your organizing team uses.";
+      deniedMsg.textContent = "That Computing ID isn't on the organizer list.";
       deniedMsg.style.display = "block";
     } else {
       resultsSection.innerHTML = '<p class="empty">Couldn\u2019t load results (' + (code || "error") + ").</p>";
