@@ -118,7 +118,9 @@ const logTableWrap = document.getElementById("logTableWrap");
 
 signinBtn.addEventListener("click", function () {
   deniedMsg.style.display = "none";
-  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (err) {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  auth.signInWithPopup(provider).catch(function (err) {
     deniedMsg.textContent = "Sign-in failed (" + (err && err.code ? err.code : "error") + ").";
     deniedMsg.style.display = "block";
   });
