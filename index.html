@@ -26,11 +26,6 @@
   .serif { font-family: 'Libre Caslon Text', Georgia, serif; }
   .band { width: 100%; background: var(--navy); position: relative; }
   .band-inner { max-width: 1100px; margin: 0 auto; padding: 44px 24px; }
-  .stamp {
-    display: inline-block; background: var(--orange); color: #fff;
-    font-family: 'Libre Caslon Text', Georgia, serif; font-weight: 700; font-size: 12px;
-    letter-spacing: 0.14em; padding: 4px 12px; border-radius: 2px; margin-bottom: 14px;
-  }
   h1 { color: #fff; font-size: 30px; margin: 0 0 6px; line-height: 1.25; font-weight: 700; }
   .doc-sub { color: rgba(255,255,255,0.75); font-size: 14px; margin: 0; }
   main.content { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
@@ -106,7 +101,6 @@
 <body>
 <header class="band">
   <div class="band-inner">
-    <span class="stamp">SAMPLE</span>
     <h1 class="serif">2026–27 Graduate Student Workshop</h1>
     <p class="doc-sub">UVA Department of Economics — Speaker Ballot</p>
   </div>
@@ -143,6 +137,8 @@
   <div class="name-field" id="nameField">
     <label for="voterName">Your name</label>
     <input id="voterName" type="text" placeholder="e.g. Jane Doe" autocomplete="name">
+    <label for="voterComputingId" style="margin-top:14px;">UVA Computing ID</label>
+    <input id="voterComputingId" type="text" placeholder="e.g. abc1de">
     <p class="name-note" id="nameNote" style="display:none;"></p>
   </div>
 
@@ -227,6 +223,7 @@ const cardsByName = {};
 
 const grid = document.getElementById("candidatesList");
 const voterNameInput = document.getElementById("voterName");
+const voterIdInput = document.getElementById("voterComputingId");
 const nameNote = document.getElementById("nameNote");
 const castBtn = document.getElementById("castBtn");
 const castHint = document.getElementById("castHint");
@@ -284,17 +281,15 @@ function getOrderedBallot() {
 
 function updateCastState() {
   const nameOk = voterNameInput.value.trim().length > 0;
+  const idOk = voterIdInput.value.trim().length > 0;
   const rankOk = Object.keys(assignment).length > 0;
-  castBtn.disabled = !(nameOk && rankOk);
-  if (nameOk && rankOk) {
-    castHint.textContent = "";
-  } else if (!nameOk && !rankOk) {
-    castHint.textContent = "Enter your name above and rank at least one nominee to continue.";
-  } else if (!nameOk) {
-    castHint.textContent = "Enter your name above to continue.";
-  } else {
-    castHint.textContent = "Rank at least one nominee to continue.";
-  }
+  castBtn.disabled = !(nameOk && idOk && rankOk);
+
+  const missing = [];
+  if (!nameOk) missing.push("your name");
+  if (!idOk) missing.push("your UVA Computing ID");
+  if (!rankOk) missing.push("a ranked nominee");
+  castHint.textContent = missing.length === 0 ? "" : "Still needed: " + missing.join(", ") + ".";
 }
 
 function showNameNote(text) { nameNote.textContent = text; nameNote.style.display = "block"; }
@@ -350,21 +345,23 @@ function clearCastError() {
 }
 
 voterNameInput.addEventListener("input", updateCastState);
+voterIdInput.addEventListener("input", updateCastState);
 
-voterNameInput.addEventListener("blur", function () {
-  const name = voterNameInput.value.trim();
-  if (!name) { hideNameNote(); return; }
-  const slug = slugify(name);
+voterIdInput.addEventListener("blur", function () {
+  const id = voterIdInput.value.trim();
+  if (!id) { hideNameNote(); return; }
+  const slug = slugify(id);
   ballotsCollection.doc(slug).get().then(function (docSnap) {
     if (docSnap.exists) {
       const data = docSnap.data();
+      if (data.voter) voterNameInput.value = data.voter;
       assignment = {};
       Object.keys(cardsByName).forEach(updateBubbleVisual);
       (data.ranking || []).forEach(function (n, i) {
         if (cardsByName[n]) assignment[n] = i + 1;
       });
       Object.keys(cardsByName).forEach(updateBubbleVisual);
-      showNameNote("Loaded your previous ballot for this name — adjust and cast again to update it.");
+      showNameNote("Loaded your previous ballot for this Computing ID — adjust and cast again to update it.");
     } else {
       hideNameNote();
     }
@@ -377,15 +374,16 @@ voterNameInput.addEventListener("blur", function () {
 
 castBtn.addEventListener("click", function () {
   const name = voterNameInput.value.trim();
+  const id = voterIdInput.value.trim();
   const ordered = getOrderedBallot();
-  if (!name || ordered.length === 0) return;
-  const slug = slugify(name);
+  if (!name || !id || ordered.length === 0) return;
+  const slug = slugify(id);
 
   clearCastError();
   castBtn.disabled = true;
   castBtn.textContent = "Casting\u2026";
 
-  ballotsCollection.doc(slug).set({ voter: name, ranking: ordered })
+  ballotsCollection.doc(slug).set({ voter: name, computingId: id, ranking: ordered })
     .then(function () {
       showConfirmation(name, ordered);
     })
