@@ -43,7 +43,6 @@
     border-radius: 4px; font-family: inherit; font-size: 14.5px; color: var(--ink);
   }
   .name-field input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(35,45,75,0.15); }
-  .name-note { font-size: 12.5px; color: var(--orange); font-weight: 600; margin: 10px 0 0; }
   .list-header { display: none; }
   @media (min-width: 560px) {
     .list-header {
@@ -139,7 +138,6 @@
     <input id="voterName" type="text" placeholder="e.g. Jane Doe" autocomplete="name">
     <label for="voterComputingId" style="margin-top:14px;">UVA Computing ID</label>
     <input id="voterComputingId" type="text" placeholder="e.g. abc1de">
-    <p class="name-note" id="nameNote" style="display:none;"></p>
   </div>
 
   <div class="list-header" id="listHeader">
@@ -216,7 +214,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const ballotsCollection = db.collection("ballots");
+const ballotsCollection = db.collection("ballot_submissions");
+const BALLOT_VERSION = "2026-09-20.1";
 
 let assignment = {};
 const cardsByName = {};
@@ -224,17 +223,12 @@ const cardsByName = {};
 const grid = document.getElementById("candidatesList");
 const voterNameInput = document.getElementById("voterName");
 const voterIdInput = document.getElementById("voterComputingId");
-const nameNote = document.getElementById("nameNote");
 const castBtn = document.getElementById("castBtn");
 const castHint = document.getElementById("castHint");
 const castRow = document.getElementById("castRow");
 const nameField = document.getElementById("nameField");
 const listHeader = document.getElementById("listHeader");
 const confirmView = document.getElementById("confirmView");
-
-function slugify(name) {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
 
 function candidateAtRank(r) {
   let found = null;
@@ -292,9 +286,6 @@ function updateCastState() {
   castHint.textContent = missing.length === 0 ? "" : "Still needed: " + missing.join(", ") + ".";
 }
 
-function showNameNote(text) { nameNote.textContent = text; nameNote.style.display = "block"; }
-function hideNameNote() { nameNote.style.display = "none"; }
-
 function initBubbles() {
   document.querySelectorAll(".candidate-row").forEach(function (row) {
     const name = row.getAttribute("data-name");
@@ -347,51 +338,44 @@ function clearCastError() {
 voterNameInput.addEventListener("input", updateCastState);
 voterIdInput.addEventListener("input", updateCastState);
 
-voterIdInput.addEventListener("blur", function () {
-  const id = voterIdInput.value.trim();
-  if (!id) { hideNameNote(); return; }
-  const slug = slugify(id);
-  ballotsCollection.doc(slug).get().then(function (docSnap) {
-    if (docSnap.exists) {
-      const data = docSnap.data();
-      if (data.voter) voterNameInput.value = data.voter;
-      assignment = {};
-      Object.keys(cardsByName).forEach(updateBubbleVisual);
-      (data.ranking || []).forEach(function (n, i) {
-        if (cardsByName[n]) assignment[n] = i + 1;
-      });
-      Object.keys(cardsByName).forEach(updateBubbleVisual);
-      showNameNote("Loaded your previous ballot for this Computing ID — adjust and cast again to update it.");
-    } else {
-      hideNameNote();
-    }
-    updateCastState();
-  }).catch(function () {
-    hideNameNote();
-    updateCastState();
-  });
-});
-
 castBtn.addEventListener("click", function () {
   const name = voterNameInput.value.trim();
   const id = voterIdInput.value.trim();
   const ordered = getOrderedBallot();
   if (!name || !id || ordered.length === 0) return;
-  const slug = slugify(id);
 
   clearCastError();
   castBtn.disabled = true;
   castBtn.textContent = "Casting\u2026";
 
-  ballotsCollection.doc(slug).set({ voter: name, computingId: id, ranking: ordered })
-    .then(function () {
-      showConfirmation(name, ordered);
-    })
-    .catch(function (err) {
-      castBtn.disabled = false;
-      castBtn.textContent = "Cast Ballot";
-      showCastError("Couldn't save your ballot (" + (err && err.code ? err.code : "error") + ") \u2014 check your connection and try again.");
+  const newDocRef = ballotsCollection.doc();
+  const submissionId = newDocRef.id;
+
+  ballotsCollection.where("computingId", "==", id).get().then(function (querySnap) {
+    const batch = db.batch();
+    querySnap.forEach(function (docSnap) {
+      if (docSnap.data().isLatest) {
+        batch.update(docSnap.ref, { isLatest: false, includedInCount: false });
+      }
     });
+    batch.set(newDocRef, {
+      submissionId: submissionId,
+      voter: name,
+      computingId: id,
+      ranking: ordered,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      ballotVersion: BALLOT_VERSION,
+      isLatest: true,
+      includedInCount: true
+    });
+    return batch.commit();
+  }).then(function () {
+    showConfirmation(name, ordered);
+  }).catch(function (err) {
+    castBtn.disabled = false;
+    castBtn.textContent = "Cast Ballot";
+    showCastError("Couldn't save your ballot (" + (err && err.code ? err.code : "error") + ") \u2014 check your connection and try again.");
+  });
 });
 
 document.getElementById("editBtn").addEventListener("click", showForm);
