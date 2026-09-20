@@ -24,6 +24,9 @@
   .signin-gate { text-align: center; padding: 60px 20px; }
   .signin-gate p { color: var(--muted); font-size: 14px; max-width: 42ch; margin: 0 auto 22px; }
   .signin-btn { background: var(--navy); color: #fff; border: none; font-family: inherit; font-size: 14.5px; font-weight: 600; padding: 12px 22px; border-radius: 4px; cursor: pointer; }
+  .signin-form { display: flex; flex-direction: column; gap: 10px; max-width: 260px; margin: 0 auto; }
+  .signin-form input { padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px; font-family: inherit; font-size: 14px; }
+  .signin-form input:focus { outline: none; border-color: var(--navy); }
   .denied { color: #B3261E; font-size: 13.5px; margin-top: 16px; }
   .who { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px; color: var(--muted); }
   .who button { background: none; border: none; color: var(--navy); text-decoration: underline; font-family: inherit; font-size: 13px; cursor: pointer; padding: 0; }
@@ -57,8 +60,12 @@
 </header>
 <main>
   <div id="signinGate" class="signin-gate">
-    <p>Individual-level ballot data is restricted to the four GSW organizers. Sign in with the Google account you organize under to continue.</p>
-    <button class="signin-btn" id="signinBtn">Sign in with Google</button>
+    <p>Individual-level ballot data is restricted to the four GSW organizers. Sign in with your UVA Computing ID and the organizer password to continue.</p>
+    <form id="signinForm" class="signin-form">
+      <input type="text" id="signinId" placeholder="UVA Computing ID" autocomplete="username">
+      <input type="password" id="signinPassword" placeholder="Password" autocomplete="current-password">
+      <button type="submit" class="signin-btn">Sign in</button>
+    </form>
     <p class="denied" id="deniedMsg" style="display:none;"></p>
   </div>
 
@@ -106,7 +113,6 @@ const CANDIDATE_NAMES = [
 ];
 
 const signinGate = document.getElementById("signinGate");
-const signinBtn = document.getElementById("signinBtn");
 const signoutBtn = document.getElementById("signoutBtn");
 const deniedMsg = document.getElementById("deniedMsg");
 const dashboard = document.getElementById("dashboard");
@@ -116,12 +122,20 @@ const voterCount = document.getElementById("voterCount");
 const logSection = document.getElementById("logSection");
 const logTableWrap = document.getElementById("logTableWrap");
 
-signinBtn.addEventListener("click", function () {
+document.getElementById("signinForm").addEventListener("submit", function (e) {
+  e.preventDefault();
   deniedMsg.style.display = "none";
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  auth.signInWithPopup(provider).catch(function (err) {
-    deniedMsg.textContent = "Sign-in failed (" + (err && err.code ? err.code : "error") + ").";
+  const id = document.getElementById("signinId").value.trim();
+  const password = document.getElementById("signinPassword").value;
+  if (!id || !password) return;
+  const email = id.toLowerCase() + "@virginia.edu";
+  auth.signInWithEmailAndPassword(email, password).catch(function (err) {
+    const code = err && err.code;
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+      deniedMsg.textContent = "That Computing ID or password wasn't recognized.";
+    } else {
+      deniedMsg.textContent = "Sign-in failed (" + (code || "error") + ").";
+    }
     deniedMsg.style.display = "block";
   });
 });
