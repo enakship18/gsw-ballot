@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSW Results — Organizers Only</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"></script>
+<style>
+  :root { --navy: #232D4B; --orange: #E57200; --ink: #1B1C22; --muted: #5B5E66; --rule: #DCDFE3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
+  .serif { font-family: 'Libre Caslon Text', Georgia, serif; }
+  .band { width: 100%; background: var(--navy); }
+  .band-inner { max-width: 960px; margin: 0 auto; padding: 34px 24px; }
+  .admin-badge { display: inline-block; background: var(--orange); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 2px; margin-bottom: 12px; }
+  h1 { color: #fff; font-size: 24px; margin: 0 0 6px; }
+  .sub { color: rgba(255,255,255,0.75); font-size: 13.5px; margin: 0; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px 70px; }
+  .signin-gate { text-align: center; padding: 60px 20px; }
+  .signin-gate p { color: var(--muted); font-size: 14px; max-width: 42ch; margin: 0 auto 22px; }
+  .signin-btn { background: var(--navy); color: #fff; border: none; font-family: inherit; font-size: 14.5px; font-weight: 600; padding: 12px 22px; border-radius: 4px; cursor: pointer; }
+  .denied { color: #B3261E; font-size: 13.5px; margin-top: 16px; }
+  .who { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px; color: var(--muted); }
+  .who button { background: none; border: none; color: var(--navy); text-decoration: underline; font-family: inherit; font-size: 13px; cursor: pointer; padding: 0; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .refresh-btn { background: var(--navy); color: #fff; border: none; font-family: inherit; font-size: 13.5px; padding: 9px 18px; border-radius: 4px; cursor: pointer; }
+  .voter-count { font-size: 13px; color: var(--muted); }
+  .winner-line { font-size: 15px; margin: 0 0 18px; }
+  table.tally-table, table.log-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 8px; }
+  .tally-table th, .tally-table td, .log-table th, .log-table td { padding: 8px 6px; text-align: center; border-top: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+  .tally-table th.name-cell, .tally-table td.name-cell, .log-table th.left, .log-table td.left { text-align: left; padding-left: 0; }
+  .tally-table td.out { color: var(--rule); }
+  .tally-table td.winner-cell { color: var(--orange); font-weight: 700; }
+  .tally-table tr.exhausted-row td { color: var(--muted); font-style: italic; border-top: 1px dashed var(--rule); }
+  .elim-note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
+  .log-section { margin-top: 44px; }
+  .log-section summary { font-size: 14px; cursor: pointer; color: var(--navy); font-weight: 600; }
+  .log-table { margin-top: 14px; }
+  .log-table td.superseded { color: var(--rule); }
+  .log-table .flag-yes { color: var(--orange); font-weight: 700; }
+  .log-table .flag-no { color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="band-inner">
+    <span class="admin-badge">ORGANIZERS ONLY — DO NOT SHARE THIS LINK</span>
+    <h1 class="serif">2026–27 GSW — Results</h1>
+    <p class="sub">Reads the same Firestore project as the ballot page, live. Access is restricted to the four workshop organizers.</p>
+  </div>
+</header>
+<main>
+  <div id="signinGate" class="signin-gate">
+    <p>Individual-level ballot data is restricted to the four GSW organizers. Sign in with the Google account you organize under to continue.</p>
+    <button class="signin-btn" id="signinBtn">Sign in with Google</button>
+    <p class="denied" id="deniedMsg" style="display:none;"></p>
+  </div>
+
+  <div id="dashboard" style="display:none;">
+    <div class="who">
+      <span id="whoAmI"></span>
+      <button id="signoutBtn">Sign out</button>
+    </div>
+    <div class="toolbar">
+      <button class="refresh-btn" id="refreshBtn">Refresh Results</button>
+      <span class="voter-count" id="voterCount"></span>
+    </div>
+    <div id="resultsSection"><p class="empty">Loading…</p></div>
+
+    <details class="log-section" id="logSection" style="display:none;">
+      <summary>Raw submission log (every ballot ever cast, including superseded ones)</summary>
+      <div id="logTableWrap"></div>
+    </details>
+  </div>
+</main>
+<script>
+// ============================================================
+// Use the SAME firebaseConfig as index.html (same project).
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAQbHT4GTV6bJ4D_FgW3R1To9SJlp-BtyU",
+  authDomain: "gsw-27-ballot.firebaseapp.com",
+  projectId: "gsw-27-ballot",
+  storageBucket: "gsw-27-ballot.firebasestorage.app",
+  messagingSenderId: "316067618836",
+  appId: "1:316067618836:web:685e9007ca7e59f966c701",
+  measurementId: "G-BE1WN3KW4F"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+const CANDIDATE_NAMES = [
+  "Daron Acemoglu", "Ufuk Akcigit", "Treb Allen", "Susan Athey", "Leah Boustan",
+  "Raj Chetty", "Dave Donaldson", "Rachel Glennerster", "Avi Goldfarb", "Claudia Goldin",
+  "Johannes Haushofer", "Chang-Tai Hsieh", "Peter Hull", "Greg Kaplan", "Robin S. Lee",
+  "Matteo Maggiori", "Emi Nakamura", "Nathan Nunn", "Michael Peters", "Stephen Redding",
+  "Emmanuel Saez", "Stefanie Stantcheva", "Chad Syverson", "Elie Tamer", "Chris Timmins",
+  "Gianluca Violante", "Ivan Werning", "Gabriel Zucman"
+];
+
+const signinGate = document.getElementById("signinGate");
+const signinBtn = document.getElementById("signinBtn");
+const signoutBtn = document.getElementById("signoutBtn");
+const deniedMsg = document.getElementById("deniedMsg");
+const dashboard = document.getElementById("dashboard");
+const whoAmI = document.getElementById("whoAmI");
+const resultsSection = document.getElementById("resultsSection");
+const voterCount = document.getElementById("voterCount");
+const logSection = document.getElementById("logSection");
+const logTableWrap = document.getElementById("logTableWrap");
+
+signinBtn.addEventListener("click", function () {
+  deniedMsg.style.display = "none";
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (err) {
+    deniedMsg.textContent = "Sign-in failed (" + (err && err.code ? err.code : "error") + ").";
+    deniedMsg.style.display = "block";
+  });
+});
+
+signoutBtn.addEventListener("click", function () { auth.signOut(); });
+
+auth.onAuthStateChanged(function (user) {
+  if (!user) {
+    dashboard.style.display = "none";
+    signinGate.style.display = "block";
+    return;
+  }
+  whoAmI.textContent = "Signed in as " + user.email;
+  signinGate.style.display = "none";
+  dashboard.style.display = "block";
+  loadResults();
+});
+
+function fetchSubmissions() {
+  return db.collection("ballot_submissions").get().then(function (snap) {
+    const all = [];
+    snap.forEach(function (docSnap) { all.push(docSnap.data()); });
+    return all;
+  });
+}
+
+function tallyRCV(ballots, candidates) {
+  let remaining = candidates.slice();
+  const rounds = [];
+  let winner = null;
+  let reason = "";
+  let round = 1;
+
+  while (round <= 5) {
+    const counts = {};
+    remaining.forEach(function (c) { counts[c] = 0; });
+    let exhausted = 0;
+    ballots.forEach(function (b) {
+      const choice = b.find(function (c) { return remaining.indexOf(c) !== -1; });
+      if (choice) { counts[choice]++; } else { exhausted++; }
+    });
+    const totalActive = Object.values(counts).reduce(function (a, b) { return a + b; }, 0);
+    const sorted = Object.entries(counts).sort(function (a, b) { return b[1] - a[1]; });
+    const roundRecord = { round: round, counts: Object.assign({}, counts), exhausted: exhausted, eliminated: null };
+    rounds.push(roundRecord);
+
+    if (sorted.length === 0) break;
+    const topC = sorted[0][0], topV = sorted[0][1];
+
+    if (totalActive > 0 && topV > totalActive / 2) { winner = topC; reason = "majority"; break; }
+    if (remaining.length <= 1) { winner = remaining[0]; reason = "last-standing"; break; }
+    if (round === 5) { winner = topC; reason = "plurality-round5"; break; }
+
+    const lowC = sorted[sorted.length - 1][0];
+    roundRecord.eliminated = lowC;
+    remaining = remaining.filter(function (c) { return c !== lowC; });
+    round++;
+  }
+  return { rounds: rounds, winner: winner, reason: reason, totalBallots: ballots.length };
+}
+
+function renderResults(tally, candidates) {
+  if (tally.totalBallots === 0) {
+    resultsSection.innerHTML = '<p class="empty">No ballots counted yet.</p>';
+    return;
+  }
+  const numRounds = tally.rounds.length;
+  let head = '<tr><th class="name-cell"></th>';
+  for (let i = 1; i <= numRounds; i++) head += "<th>R" + i + "</th>";
+  head += "</tr>";
+
+  let body = "";
+  candidates.forEach(function (name) {
+    let eliminatedAtRound = null;
+    tally.rounds.forEach(function (r, idx) {
+      if (r.eliminated === name) eliminatedAtRound = idx + 1;
+    });
+    let row = '<tr><td class="name-cell">' + name + "</td>";
+    tally.rounds.forEach(function (r, idx) {
+      const roundNum = idx + 1;
+      if (eliminatedAtRound && roundNum > eliminatedAtRound) {
+        row += '<td class="out">—</td>';
+      } else {
+        const v = r.counts[name];
+        const isWinnerCell = tally.winner === name && roundNum === numRounds;
+        row += '<td class="' + (isWinnerCell ? "winner-cell" : "") + '">' + (v !== undefined ? v : "—") + "</td>";
+      }
+    });
+    row += "</tr>";
+    body += row;
+  });
+
+  let exhaustedRow = '<tr class="exhausted-row"><td class="name-cell">Exhausted</td>';
+  tally.rounds.forEach(function (r) { exhaustedRow += "<td>" + r.exhausted + "</td>"; });
+  exhaustedRow += "</tr>";
+
+  const reasonText = {
+    majority: "won a majority of active first-choice votes",
+    "plurality-round5": "led when the process reached Round 5",
+    "last-standing": "was the only candidate remaining"
+  }[tally.reason] || "";
+
+  resultsSection.innerHTML =
+    '<p class="winner-line"><strong>' + tally.winner + "</strong> " + reasonText + " — " +
+    tally.totalBallots + " ballot" + (tally.totalBallots === 1 ? "" : "s") + " counted.</p>" +
+    '<table class="tally-table"><thead>' + head + "</thead><tbody>" + body + exhaustedRow + "</tbody></table>" +
+    '<p class="elim-note">R = round. A dash means the candidate was already eliminated; "Exhausted" is ballots whose ranked candidates are all out. Counts include only each voter\u2019s most recent submission.</p>';
+}
+
+function formatTimestamp(ts) {
+  if (ts && typeof ts.toDate === "function") return ts.toDate().toLocaleString();
+  return "—";
+}
+
+function renderLog(submissions) {
+  if (submissions.length === 0) {
+    logSection.style.display = "none";
+    return;
+  }
+  logSection.style.display = "block";
+  const sorted = submissions.slice().sort(function (a, b) {
+    const ta = a.timestamp && a.timestamp.toMillis ? a.timestamp.toMillis() : 0;
+    const tb = b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : 0;
+    return tb - ta;
+  });
+  let rows = "";
+  sorted.forEach(function (s) {
+    rows += "<tr" + (s.isLatest ? "" : ' class="superseded"') + ">" +
+      '<td class="left">' + formatTimestamp(s.timestamp) + "</td>" +
+      '<td class="left">' + (s.voter || "—") + "</td>" +
+      '<td class="left">' + (s.computingId || "—") + "</td>" +
+      '<td class="left">' + (s.ballotVersion || "—") + "</td>" +
+      '<td class="left">' + (s.submissionId || "—") + "</td>" +
+      "<td>" + (s.isLatest ? '<span class="flag-yes">Yes</span>' : '<span class="flag-no">No</span>') + "</td>" +
+      "<td>" + (s.includedInCount ? '<span class="flag-yes">Yes</span>' : '<span class="flag-no">No</span>') + "</td>" +
+      "</tr>";
+  });
+  logTableWrap.innerHTML =
+    '<table class="log-table"><thead><tr>' +
+    '<th class="left">Timestamp</th><th class="left">Voter</th><th class="left">Computing ID</th>' +
+    '<th class="left">Ballot version</th><th class="left">Submission ID</th><th>Latest?</th><th>Counted?</th>' +
+    "</tr></thead><tbody>" + rows + "</tbody></table>";
+}
+
+function loadResults() {
+  resultsSection.innerHTML = '<p class="empty">Loading…</p>';
+  fetchSubmissions().then(function (all) {
+    const counted = all.filter(function (s) { return s.includedInCount; }).map(function (s) { return s.ranking; });
+    const tally = tallyRCV(counted, CANDIDATE_NAMES);
+    renderResults(tally, CANDIDATE_NAMES);
+    voterCount.textContent = counted.length + " counted ballot" + (counted.length === 1 ? "" : "s") + " (" + all.length + " total submissions on file)";
+    renderLog(all);
+  }).catch(function (err) {
+    const code = err && err.code;
+    if (code === "permission-denied") {
+      resultsSection.innerHTML = "";
+      auth.signOut();
+      deniedMsg.textContent = "That Google account isn't on the organizer list. Sign in with the account your organizing team uses.";
+      deniedMsg.style.display = "block";
+    } else {
+      resultsSection.innerHTML = '<p class="empty">Couldn\u2019t load results (' + (code || "error") + ").</p>";
+    }
+  });
+}
+
+document.getElementById("refreshBtn").addEventListener("click", loadResults);
+</script>
+</body>
+</html>
